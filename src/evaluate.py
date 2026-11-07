@@ -5,6 +5,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # write plots to files, no display needed
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     RocCurveDisplay,
@@ -44,4 +46,23 @@ def save_plots(model, X_test, y_test, out_dir: Path, name: str) -> None:
     RocCurveDisplay.from_estimator(model, X_test, y_test)
     plt.title(f"ROC curve: {name}")
     plt.savefig(out_dir / "roc_curve.png", bbox_inches="tight")
+    plt.close()
+
+
+def feature_importance(model, X_test, y_test, random_state: int = 42) -> pd.Series:
+    """Permutation importance: how much ROC AUC drops when a feature is shuffled."""
+    result = permutation_importance(
+        model, X_test, y_test, scoring="roc_auc", n_repeats=20, random_state=random_state
+    )
+    return pd.Series(result.importances_mean, index=X_test.columns).sort_values(ascending=False)
+
+
+def save_importance_plot(importance: pd.Series, out_dir: Path, name: str, top: int = 15) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    top_features = importance.head(top).iloc[::-1]
+    plt.figure(figsize=(7, 6))
+    plt.barh(top_features.index, top_features.values, color="#3b6ea5")
+    plt.xlabel("Drop in ROC AUC when shuffled")
+    plt.title(f"Top {top} features: {name}")
+    plt.savefig(out_dir / "feature_importance.png", bbox_inches="tight")
     plt.close()
