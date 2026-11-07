@@ -1,0 +1,948 @@
+================================================================================
+                 BREAST CANCER CLASSIFICATION - PROJECT EXPLANATION
+================================================================================
+
+This file explains the whole project in simple words:
+  - what the project does
+  - which tools (frameworks / libraries) we used, and why
+  - every file, step by step: what it does, how it does it, and why
+  - how to use the virtual environment (.venv) and Git / GitHub
+
+Note: This project is for learning only. It is NOT a medical tool.
+
+
+================================================================================
+PART 1 - WHAT THE PROJECT DOES
+================================================================================
+
+A doctor takes a small sample of cells from a breast lump. A computer
+measures the cell nuclei in a picture of that sample (size, shape, texture
+and so on). That gives 30 numbers for each patient.
+
+Our project teaches a computer to look at those 30 numbers and answer one
+question:
+
+    Is the tumor MALIGNANT (cancer) or BENIGN (not cancer)?
+
+This kind of problem is called "binary classification": there are only two
+possible answers.
+
+The overall flow is:
+
+    1. Load the data (569 patients, 30 numbers each, plus the right answer)
+    2. Split it: 80% to learn from, 20% kept aside to test with
+    3. Train 5 different models and compare them
+    4. Pick the best one and try to improve its settings
+    5. Test it on the 20% it has never seen
+    6. Save the model, the scores and the charts
+    7. Use the saved model: from the command line or from a web page
+    8. Run automatic tests to make sure everything still works
+
+Final result: the best model (Logistic Regression) is correct about 98% of
+the time on patients it has never seen.
+
+
+================================================================================
+PART 2 - THE DATA
+================================================================================
+
+Name:     Wisconsin Diagnostic Breast Cancer dataset
+Size:     569 patients
+            - 357 benign
+            - 212 malignant
+Inputs:   30 numbers per patient
+Answer:   0 = malignant, 1 = benign
+
+The 30 numbers come from 10 measurements of the cell nuclei:
+
+    radius, texture, perimeter, area, smoothness, compactness,
+    concavity, concave points, symmetry, fractal dimension
+
+Each measurement is given in 3 ways, so 10 x 3 = 30:
+
+    mean ...    the average over all cells in the picture
+    ... error   how much it varies (the "standard error")
+    worst ...   the average of the 3 largest (worst-looking) cells
+
+Why this dataset?
+  - It comes built into scikit-learn, so there is nothing to download.
+  - It has no missing values, so we don't need to clean it.
+  - It is a well-known dataset, good for learning and for comparing results.
+
+
+================================================================================
+PART 3 - THE TOOLS (FRAMEWORKS AND LIBRARIES) WE USED, AND WHY
+================================================================================
+
+All of these are listed in requirements.txt and installed with:
+
+    pip install -r requirements.txt
+
+--------------------------------------------------------------------------------
+1. Python
+--------------------------------------------------------------------------------
+What:  The programming language the whole project is written in.
+Why:   Python is the most common language for machine learning. Almost
+       every ML library is made for Python, and the code is easy to read.
+
+--------------------------------------------------------------------------------
+2. scikit-learn  (main machine learning framework)
+--------------------------------------------------------------------------------
+What:  A library full of ready-made machine learning tools.
+We used it for:
+  - Loading the dataset (load_breast_cancer)
+  - Splitting data into train and test (train_test_split)
+  - Scaling the numbers (StandardScaler)
+  - The 5 models (LogisticRegression, KNeighborsClassifier, SVC,
+    RandomForestClassifier, HistGradientBoostingClassifier)
+  - Joining steps together (Pipeline)
+  - Cross-validation and tuning (StratifiedKFold, cross_val_score,
+    GridSearchCV)
+  - Scores and charts (accuracy, F1, ROC AUC, confusion matrix, ROC curve)
+  - Feature importance (permutation_importance)
+Why:   Our data is a simple table of numbers with only 569 rows. For this
+       kind of data, scikit-learn is the best fit: it is simple, fast,
+       and gives very good results. Deep learning frameworks such as
+       TensorFlow or PyTorch are made for large data like images and text,
+       and would be overkill here. They would be slower and harder to
+       understand, and they would not give better results.
+
+--------------------------------------------------------------------------------
+3. pandas
+--------------------------------------------------------------------------------
+What:  A library for working with tables (like Excel inside Python).
+We used it for:
+  - Holding the data as a table with column names (a "DataFrame")
+  - Building the results table and saving it as a CSV file
+  - Turning the user's input on the web page into a one-row table
+Why:   With pandas, every column keeps its name ("mean radius" and so on),
+       which makes the data easy to read and avoids mixing up columns.
+
+--------------------------------------------------------------------------------
+4. NumPy
+--------------------------------------------------------------------------------
+What:  The basic library for fast math on lists of numbers.
+Why:   We do not call it directly much, but pandas and scikit-learn are
+       built on top of it, so it must be installed.
+
+--------------------------------------------------------------------------------
+5. Matplotlib
+--------------------------------------------------------------------------------
+What:  A library for drawing charts.
+We used it for:
+  - The confusion matrix chart
+  - The ROC curve chart
+  - The feature importance bar chart
+Why:   It is the standard charting library in Python and works directly
+       with scikit-learn's chart helpers. We save the charts as PNG files,
+       so no screen is needed.
+
+--------------------------------------------------------------------------------
+6. joblib
+--------------------------------------------------------------------------------
+What:  A library to save Python objects to a file and load them back.
+We used it for:
+  - Saving the trained model to models/best_model.joblib
+  - Loading it again in predict.py and app.py
+Why:   Training takes time. By saving the trained model once, other
+       programs can use it straight away without training again.
+       joblib is the method scikit-learn recommends for this.
+
+--------------------------------------------------------------------------------
+7. Streamlit  (front end / web page framework)
+--------------------------------------------------------------------------------
+What:  A framework that turns a Python script into a web page.
+We used it for:
+  - The web page in app.py, where you type in measurements and get a
+    prediction
+Why:   With Streamlit we write the whole web page in Python, in one file.
+       We don't need HTML, CSS or JavaScript, and we don't need a separate
+       backend server. Other options such as Flask or Django (Python web
+       frameworks) or React (a JavaScript framework) would need many more
+       files and more code for the same result. For showing off an ML
+       model, Streamlit is the quickest and simplest choice.
+
+--------------------------------------------------------------------------------
+8. pytest
+--------------------------------------------------------------------------------
+What:  A framework for writing and running automatic tests.
+We used it for:
+  - The 11 checks in tests/test_project.py
+Why:   After any change you can run "pytest" and know within a few seconds
+       whether something broke. It is the most popular test tool in
+       Python and needs very little extra code.
+
+
+================================================================================
+PART 4 - KEY IDEAS USED IN THE PROJECT (IN SIMPLE WORDS)
+================================================================================
+
+Train / test split
+    We keep 20% of the patients hidden while training. At the end we test
+    on them. That is the honest way to see how the model will do on new
+    patients. "Stratified" means both parts keep the same mix of benign
+    and malignant cases.
+
+Scaling (StandardScaler)
+    Some numbers are big (area is around 500 to 2500) and some are tiny
+    (smoothness is around 0.1). Some models get confused by this. Scaling
+    changes every column so it has an average of 0 and a similar spread.
+
+Pipeline
+    A pipeline joins steps together, for example "scale, then model".
+    This makes sure the scaling only learns from the training data and
+    never "peeks" at the test data. Peeking like that is called
+    "data leakage", and it makes the scores look better than they really
+    are.
+
+Cross-validation (5-fold)
+    To compare models fairly, we split the training data into 5 parts.
+    Each model trains on 4 parts and is checked on the 5th, 5 times, each
+    time with a different part held out. We then average the 5 scores.
+    This is more reliable than a single check.
+
+Hyperparameter tuning (GridSearchCV)
+    Every model has settings, for example how strict Logistic Regression
+    is (called "C"). GridSearchCV tries every combination from a small
+    list and keeps the one with the best cross-validation score.
+
+Scores
+    Accuracy - out of all patients, how many did we get right?
+    F1       - a balance of "when we say benign, are we right?" and
+               "did we find all the benign cases?"
+    ROC AUC  - how well the model ranks patients from most likely
+               malignant to most likely benign. 1.0 is perfect and 0.5 is
+               guessing. We use this one to choose the best model.
+
+Confusion matrix
+    A 2x2 table: how many malignant patients were called malignant or
+    benign, and the same for benign patients. It shows exactly which
+    mistakes the model makes.
+
+ROC curve
+    A chart of ROC AUC. The closer the curve gets to the top-left corner,
+    the better the model.
+
+Permutation feature importance
+    We shuffle one column at a time and see how much the score drops.
+    A big drop means the model depends a lot on that measurement.
+
+
+================================================================================
+PART 5 - THE FILES, ONE BY ONE
+================================================================================
+
+The project folder looks like this:
+
+    breast_cancer_classification/
+    |-- PROJECT_EXPLANATION.txt   this file
+    |-- README.md                 short project summary for GitHub
+    |-- requirements.txt          list of libraries to install
+    |-- pytest.ini                settings for the tests
+    |-- src/
+    |   |-- __init__.py           marks "src" as a Python package
+    |   |-- data.py               loads and splits the data
+    |   |-- models.py             the 5 models and their tuning settings
+    |   |-- evaluate.py           scores, charts, feature importance
+    |-- train.py                  MAIN SCRIPT: trains everything, saves results
+    |-- predict.py                uses the saved model from the command line
+    |-- app.py                    the web page (front end)
+    |-- models/
+    |   |-- best_model.joblib     the saved trained model
+    |-- reports/
+    |   |-- results.csv           scores of every model
+    |   |-- feature_importance.csv
+    |   |-- confusion_matrix.png
+    |   |-- roc_curve.png
+    |   |-- feature_importance.png
+    |-- tests/
+        |-- __init__.py
+        |-- test_project.py       automatic checks
+
+We split the code into small files (src/data.py, src/models.py,
+src/evaluate.py) so each file has one clear job. train.py, predict.py,
+app.py and the tests all reuse the same code instead of copying it.
+
+--------------------------------------------------------------------------------
+FILE: requirements.txt
+--------------------------------------------------------------------------------
+What:  The list of libraries the project needs, with minimum versions:
+       numpy, pandas, scikit-learn, matplotlib, joblib, streamlit, pytest.
+Why:   Anyone can set up the project with one command:
+           pip install -r requirements.txt
+How:   pip reads the file and installs each library.
+
+--------------------------------------------------------------------------------
+FILE: src/__init__.py
+--------------------------------------------------------------------------------
+What:  An empty file.
+Why:   It tells Python that the "src" folder is a package, so other files
+       can write "from src.data import load_data".
+
+--------------------------------------------------------------------------------
+FILE: src/data.py   (loading and splitting the data)
+--------------------------------------------------------------------------------
+It has 3 functions.
+
+Step 1 - load_data()
+    - Calls scikit-learn's load_breast_cancer(as_frame=True).
+    - as_frame=True gives us a pandas table with column names instead of
+      a plain block of numbers.
+    - Returns two things:
+        X = the 30 measurement columns (the inputs)
+        y = the answer column (0 = malignant, 1 = benign)
+
+Step 2 - split_data(X, y)
+    - Calls train_test_split with:
+        test_size=0.2      -> 20% for testing (114 patients),
+                              80% for training (455 patients)
+        stratify=y         -> both parts keep the same benign/malignant mix
+        random_state=42    -> the split is the same every time it runs,
+                              so the results can be repeated
+    - Returns X_train, X_test, y_train, y_test.
+
+Step 3 - describe(X, y)
+    - Prints basic facts: number of patients and columns, number of
+      missing values (0), and how many are benign and malignant.
+    - Why: to check the data looks right before we train on it.
+
+--------------------------------------------------------------------------------
+FILE: src/models.py   (the models and their settings)
+--------------------------------------------------------------------------------
+Step 1 - get_models()
+    Builds 5 models. Each one is wrapped in a Pipeline.
+
+    a) logistic_regression = StandardScaler + LogisticRegression
+       A simple model that draws a straight dividing line between the two
+       groups. It is fast and easy to explain, and it often works very well
+       on clean data like ours. It needs scaling.
+       max_iter=5000 gives it enough steps to finish learning.
+
+    b) knn = StandardScaler + KNeighborsClassifier(n_neighbors=5)
+       Looks at the 5 most similar patients and takes a vote. It needs
+       scaling, because it measures distance between patients.
+
+    c) svm = StandardScaler + CalibratedClassifierCV(SVC)
+       Support Vector Machine: finds the widest possible gap between the
+       two groups, and can bend the dividing line (the "rbf" kernel).
+       SVC on its own does not give probabilities, so we wrap it in
+       CalibratedClassifierCV, which adds them. The web page needs those
+       probabilities to show "how sure" the model is.
+
+    d) random_forest = RandomForestClassifier(n_estimators=300)
+       300 decision trees that vote together. Trees don't care about the
+       size of numbers, so no scaling is needed.
+
+    e) gradient_boosting = HistGradientBoostingClassifier
+       Builds trees one after another, where each new tree fixes the
+       mistakes of the previous ones. Often very strong on tables of data.
+       No scaling needed.
+
+    random_state=42 is passed so results are the same on every run.
+
+    Why 5 different models? We don't know in advance which will work
+    best, so we try different kinds (linear, distance-based, margin-based,
+    tree-based) and let the data decide.
+
+Step 2 - PARAM_GRIDS
+    For each model, a small list of settings to try during tuning:
+      - logistic_regression: C (how strict it is): 0.01, 0.1, 1, 10, 100
+      - knn: number of neighbours (3 to 15), and whether closer neighbours
+        count more
+      - svm: C and gamma (how bendy the dividing line can be)
+      - random_forest: number of trees, and maximum tree depth
+      - gradient_boosting: learning rate, and maximum tree depth
+    The names look like "clf__C". The part before "__" is the step name
+    in the pipeline ("clf"), and the part after is the setting. For SVM,
+    "clf__estimator__C" goes one level deeper, because SVC sits inside
+    the calibration wrapper.
+
+--------------------------------------------------------------------------------
+FILE: src/evaluate.py   (scores, charts and feature importance)
+--------------------------------------------------------------------------------
+First line of note: matplotlib.use("Agg")
+    This tells matplotlib to draw charts straight into files, without
+    opening a window. It works on any computer, even one with no screen.
+
+Step 1 - test_metrics(model, X_test, y_test)
+    - model.predict(...)       -> the predicted answer for each patient
+    - model.predict_proba(...) -> the probability of "benign"
+    - Calculates accuracy, F1 and ROC AUC and returns them together.
+
+Step 2 - report(model, X_test, y_test)
+    - Uses scikit-learn's classification_report to build a small table
+      of precision, recall and F1 for each class (malignant and benign).
+
+Step 3 - save_plots(model, X_test, y_test, out_dir, name)
+    - Draws the confusion matrix -> reports/confusion_matrix.png
+    - Draws the ROC curve        -> reports/roc_curve.png
+
+Step 4 - feature_importance(model, X_test, y_test)
+    - Runs permutation_importance: shuffles each column 20 times and
+      measures how much ROC AUC drops.
+    - Returns the 30 columns sorted from most to least important.
+
+Step 5 - save_importance_plot(importance, out_dir, name)
+    - Draws a bar chart of the top 15 columns
+      -> reports/feature_importance.png
+
+--------------------------------------------------------------------------------
+FILE: train.py   (the main script: run this first)
+--------------------------------------------------------------------------------
+Run:  python train.py
+
+It does everything from start to finish, in this order:
+
+Step 1 - Load and check the data
+    load_data(), then describe(), then split_data().
+    Prints: 569 patients, 30 columns, 0 missing values,
+    455 for training, 114 for testing.
+
+Step 2 - Compare all 5 models with 5-fold cross-validation
+    - StratifiedKFold(n_splits=5, shuffle=True) makes 5 fair parts of
+      the training data.
+    - cross_val_score(..., scoring="roc_auc") trains and checks each
+      model 5 times and gives back 5 scores.
+    - Prints the average and spread for each model.
+    - The test data is NOT used here. It stays hidden.
+
+Step 3 - Pick the best model
+    The model with the highest average ROC AUC wins
+    (in our run: Logistic Regression, 0.9959).
+
+Step 4 - Tune the best model
+    - GridSearchCV tries every setting in PARAM_GRIDS for that model,
+      again with 5-fold cross-validation.
+    - n_jobs=-1 uses all CPU cores to go faster.
+    - Prints the best settings and the score before and after tuning.
+    - In our run, the best C was 1, which is the default, so tuning did
+      not improve anything.
+
+Step 5 - Test every model on the hidden test data
+    - Each model is trained on all 455 training patients.
+    - Each is then scored on the 114 test patients (accuracy, F1,
+      ROC AUC).
+    - The tuned version is added as one more row.
+    - Everything is printed as one table, sorted by cross-validation
+      score.
+
+Step 6 - Decide which model to save
+    - If tuning beat the default in cross-validation, save the tuned one.
+    - Otherwise, save the default.
+    - Why use the cross-validation score and not the test score to
+      decide? The test data must stay a fair, final check. If we chose
+      the model by looking at the test score, that score would no longer
+      be honest.
+
+Step 7 - Print the detailed report and feature importance
+    - Prints the classification report for the saved model.
+    - Calculates feature importance and prints the top 10 columns.
+
+Step 8 - Save everything
+    - reports/results.csv             all scores
+    - reports/feature_importance.csv  importance for every column
+    - reports/confusion_matrix.png    chart
+    - reports/roc_curve.png           chart
+    - reports/feature_importance.png  chart
+    - models/best_model.joblib        the trained model, using joblib.dump
+
+--------------------------------------------------------------------------------
+FILE: predict.py   (use the saved model from the command line)
+--------------------------------------------------------------------------------
+Run:  python predict.py   (after train.py)
+
+Step 1 - Check that models/best_model.joblib exists. If it doesn't, stop
+         and tell the user to run train.py first.
+Step 2 - Load the model with joblib.load.
+Step 3 - Load the data and take the same test split (same random_state,
+         so it is exactly the same 114 patients).
+Step 4 - Take the first 10 test patients.
+Step 5 - For each one, print:
+             the predicted answer, the probability of benign,
+             the actual answer, and "ok" or "WRONG".
+Why:   It is a quick way to see the saved model working, without the web
+       page.
+
+--------------------------------------------------------------------------------
+FILE: app.py   (the web page / front end, built with Streamlit)
+--------------------------------------------------------------------------------
+Run:  streamlit run app.py
+Then open http://localhost:8501 in a browser.
+
+Step 1 - Page setup
+    st.set_page_config sets the browser tab title, the icon and a wide
+    layout.
+
+Step 2 - Load the model once (get_model)
+    - Loads models/best_model.joblib.
+    - @st.cache_resource means it is loaded only once, not on every
+      click. Streamlit re-runs the whole script each time the user does
+      something, so without the cache it would reload the model every
+      time.
+    - If the model file is missing, it shows a red error and stops.
+
+Step 3 - Load the data once (get_data)
+    - Loads the dataset and the test split.
+    - @st.cache_data keeps it in memory, for the same reason.
+    - Needed for two things: the average values that fill the form at
+      the start, and the real test patients the user can pick from.
+
+Step 4 - Title, description and warning
+    Shows what the page does, plus "For learning purposes only, not a
+    medical diagnosis."
+
+Step 5 - Feature importance section (optional)
+    If reports/feature_importance.png exists, it shows a fold-out
+    section "Which measurements matter most to the model?" with the
+    chart inside.
+
+Step 6 - Sidebar: pick a real sample
+    - A dropdown with "Dataset average" plus all 114 test patients. Each
+      patient shows its real answer, for example
+      "Sample 3 (actual: Benign)".
+    - Picking a patient fills the form with that patient's 30 numbers.
+
+Step 7 - The input form
+    - st.form groups all inputs, so the page only updates when you press
+      Predict, not after every single number you change.
+    - st.tabs makes 3 tabs: "Mean values", "Standard error",
+      "Worst values". Each tab has 10 inputs in 3 columns, so the page
+      isn't one long list of 30 boxes.
+    - Each box is an st.number_input that starts with the average value
+      (or the chosen patient's value) and cannot go below 0.
+
+Step 8 - When "Predict" is pressed
+    - The 30 values are put into a one-row pandas table, in the same
+      column order the model was trained with.
+    - model.predict gives the answer and model.predict_proba gives the
+      probability.
+    - Shows a GREEN box for Benign or a RED box for Malignant.
+    - Shows "Model confidence" (how sure it is of its answer) and a bar
+      for "Probability benign".
+    - If a real patient was picked, it also shows the actual answer, so
+      you can see whether the model was right.
+
+--------------------------------------------------------------------------------
+FILE: tests/test_project.py   (automatic checks)
+--------------------------------------------------------------------------------
+Run:  pytest   (from the project folder)
+
+There are 11 checks in total:
+
+ 1. test_data_shape_and_labels
+      The data has 569 rows and 30 columns, the answers are only 0 and 1,
+      and there are no missing values.
+ 2. test_split_is_stratified
+      Train + test = 569, and both parts have nearly the same
+      benign/malignant mix.
+ 3. test_every_model_has_a_tuning_grid
+      Every model in get_models() has settings in PARAM_GRIDS, so tuning
+      can never crash on a missing model.
+ 4-8. test_models_train_and_score_well (runs once for each of the 5 models)
+      Each model trains without errors and scores ROC AUC above 0.95.
+ 9. test_metrics_and_importance
+      The scoring function returns accuracy, F1 and ROC AUC, and feature
+      importance returns all 30 columns.
+10. test_saved_model_predicts
+      The saved model file loads, and is right on more than 95% of the
+      test patients.
+11. test_web_app_predicts
+      Opens app.py in Streamlit's test mode (no browser needed), checks
+      there are 30 input boxes, clicks Predict, and checks that a result
+      appears with no errors.
+
+Tests 10 and 11 are skipped automatically if the model has not been
+trained yet.
+
+Why tests? Whenever you change any code, one command tells you whether
+everything still works.
+
+--------------------------------------------------------------------------------
+FILE: tests/__init__.py
+--------------------------------------------------------------------------------
+Empty file. It marks "tests" as a package, so the test file can import
+from "src".
+
+--------------------------------------------------------------------------------
+FILE: pytest.ini
+--------------------------------------------------------------------------------
+Settings for pytest:
+  - testpaths = tests  -> only look for tests in the tests folder
+  - ignore DeprecationWarning -> hide messages about features that
+    libraries will change in the future, which keeps the output clean
+
+--------------------------------------------------------------------------------
+FILE: README.md
+--------------------------------------------------------------------------------
+The short summary shown on the GitHub page: what the project does, the
+folder layout, setup and run commands, the results table and the 3 charts.
+This text file is the long, detailed version.
+
+--------------------------------------------------------------------------------
+FOLDER: models/
+--------------------------------------------------------------------------------
+best_model.joblib - the trained model (scaler + Logistic Regression) saved
+by train.py. It is used by predict.py, app.py and the tests.
+.gitkeep - an empty file so git keeps the folder even when it is empty.
+
+--------------------------------------------------------------------------------
+FOLDER: reports/
+--------------------------------------------------------------------------------
+All created by train.py:
+  results.csv             scores of all models (plus the tuned one)
+  feature_importance.csv  importance score for all 30 columns
+  confusion_matrix.png    right and wrong answers for the saved model
+  roc_curve.png           ROC curve of the saved model
+  feature_importance.png  top 15 most important measurements
+
+
+================================================================================
+PART 6 - HOW TO RUN EVERYTHING (STEP BY STEP)
+================================================================================
+
+1. Create a Python environment (only once):
+       python3 -m venv .venv
+       source .venv/bin/activate
+
+2. Install the libraries (only once):
+       pip install -r requirements.txt
+
+3. Go to the project folder:
+       cd breast_cancer_classification
+
+4. Train the models:
+       python train.py
+
+5. Try predictions in the terminal:
+       python predict.py
+
+6. Open the web page:
+       streamlit run app.py
+   and go to http://localhost:8501
+
+7. Run the tests:
+       pytest
+
+
+================================================================================
+PART 7 - RESULTS
+================================================================================
+
+Test set: 114 patients the models never saw during training.
+
+    Model                  CV ROC AUC   Accuracy   F1      ROC AUC
+    ---------------------  ----------   --------   -----   -------
+    Logistic Regression    0.996        98.2%      0.986   0.995   <- saved
+    SVM                    0.996        98.2%      0.986   0.995
+    Gradient Boosting      0.994        95.6%      0.966   0.990
+    Random Forest          0.990        94.7%      0.958   0.994
+    KNN                    0.988        95.6%      0.966   0.979
+
+  - Logistic Regression won. On this data, the two groups can be
+    separated well by a simple straight line, so a simple model is
+    enough.
+  - Tuning kept the default setting (C = 1), so it did not change the
+    result.
+  - The saved model got 112 out of 114 test patients right: 1 malignant
+    and 1 benign patient were wrong.
+  - The most important measurements were "worst smoothness",
+    "worst concave points", "area error" and "radius error".
+
+
+================================================================================
+PART 8 - VIRTUAL ENVIRONMENT (.venv)
+================================================================================
+
+--------------------------------------------------------------------------------
+What is a virtual environment?
+--------------------------------------------------------------------------------
+A virtual environment is a private folder that holds its own copy of
+Python and its own set of installed libraries, just for one project.
+
+Think of it like a separate toolbox for each project. Whatever you install
+inside it stays inside it, and does not touch the rest of the computer.
+
+--------------------------------------------------------------------------------
+Why do we use one?
+--------------------------------------------------------------------------------
+1. No clashes between projects
+     Project A may need pandas 2.1 while project B needs pandas 3.0.
+     With a separate environment for each, both can work on the same
+     computer.
+2. The system Python stays clean
+     On Ubuntu, the system Python is used by the operating system
+     itself. Installing packages into it can break things, and newer
+     Ubuntu versions block it ("externally-managed-environment" error).
+3. Easy to share
+     requirements.txt lists what the project needs. Anyone can create
+     a fresh environment and install exactly those libraries.
+4. Easy to reset
+     If something goes wrong, delete the .venv folder and create it
+     again. Nothing else on the computer is affected.
+
+--------------------------------------------------------------------------------
+Where is it in this project?
+--------------------------------------------------------------------------------
+    projects_ml/
+    |-- .venv/                          <- the virtual environment
+    |-- breast_cancer_classification/   <- this project
+
+The .venv folder is NOT uploaded to GitHub (it is listed in .gitignore).
+It is large and specific to one computer. Everyone creates their own from
+requirements.txt.
+
+--------------------------------------------------------------------------------
+Commands, and what each one means
+--------------------------------------------------------------------------------
+sudo apt install python3.12-venv
+    Ubuntu/Debian only, needed only once per computer. Installs the
+    "venv" tool, which Ubuntu does not include by default.
+    sudo = run as administrator, apt = Ubuntu's package installer.
+
+python3 -m venv .venv
+    Creates a new virtual environment in a folder called ".venv".
+    -m venv = run Python's built-in "venv" module.
+    .venv  = the folder name. The dot at the start hides the folder
+             in normal file listings.
+
+source .venv/bin/activate
+    Turns the environment ON in the current terminal.
+    After this, "python" and "pip" use the environment, not the system.
+    You will see "(.venv)" at the start of the terminal line.
+    You must do this every time you open a new terminal.
+    (On Windows: .venv\Scripts\activate)
+
+deactivate
+    Turns the environment OFF. The terminal goes back to the system
+    Python.
+
+pip install -r requirements.txt
+    Installs every library listed in requirements.txt into the active
+    environment.
+    pip = Python's package installer, -r = "read the list from this file".
+
+pip install streamlit
+    Installs a single library.
+
+pip list
+    Shows every library installed in the environment, with versions.
+
+pip freeze > requirements.txt
+    Writes the exact versions of everything installed into
+    requirements.txt. (We wrote our file by hand with minimum versions
+    such as "pandas>=2.1" instead, so newer versions are also allowed.)
+
+which python
+    Shows which Python is being used. If the environment is on, the path
+    ends with ".venv/bin/python".
+
+../.venv/bin/python train.py
+    Runs a script with the environment's Python WITHOUT activating it
+    first. ".." means "one folder up". Handy for one-off commands.
+
+rm -rf .venv
+    Deletes the environment completely, to start fresh.
+    Be careful: rm -rf deletes without asking.
+
+
+================================================================================
+PART 9 - GIT AND GITHUB
+================================================================================
+
+--------------------------------------------------------------------------------
+What are Git and GitHub?
+--------------------------------------------------------------------------------
+Git
+    A tool on your computer that saves "snapshots" of your project over
+    time. Each snapshot is called a COMMIT. You can see what changed,
+    when and why, and go back to any older snapshot.
+
+GitHub
+    A website that stores a copy of your Git project online.
+    It is used for backup, sharing, showing your work, and working
+    together with other people.
+
+    Our project on GitHub:
+    https://github.com/abhishek-reddy-yes/breast_cancer_classification
+
+--------------------------------------------------------------------------------
+Important words
+--------------------------------------------------------------------------------
+Repository (repo)  A project folder that Git tracks. It holds all files
+                   and all history.
+Commit             A saved snapshot, with a message that explains what
+                   changed.
+Branch             A separate line of work. "main" is the main line.
+                   Our local work was done on the branch
+                   "add-breast-cancer-classification".
+Remote             The online copy of the repo (on GitHub). It is
+                   usually named "origin".
+Push               Send your commits from your computer to GitHub.
+Pull               Bring new commits from GitHub to your computer.
+Clone              Download a full copy of a repo from GitHub.
+Staging area       A waiting area. You "add" files there first, then
+                   "commit" them together.
+Merge              Join two lines of history (two branches) into one.
+Merge conflict     When the same part of a file was changed in two
+                   places, Git asks you to choose which version to keep.
+
+--------------------------------------------------------------------------------
+The everyday workflow (3 steps)
+--------------------------------------------------------------------------------
+    1. git add .                          choose the changes to save
+    2. git commit -m "what I changed"     save a snapshot
+    3. git push                           upload to GitHub
+
+--------------------------------------------------------------------------------
+Commands, and what each one means
+--------------------------------------------------------------------------------
+SETUP (only once)
+
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+    Tells Git who you are. Your name appears on every commit.
+
+git init
+    Turns the current folder into a Git repository (creates a hidden
+    ".git" folder where all the history is kept).
+
+git clone https://github.com/abhishek-reddy-yes/breast_cancer_classification.git
+    Downloads the whole project and its history from GitHub into a new
+    folder.
+
+CHECKING
+
+git status
+    Shows which files are changed, new, or ready to commit.
+    The most useful command: run it often.
+
+git diff
+    Shows the exact lines that changed and have not been added yet
+    ("+" = added, "-" = removed).
+
+git log --oneline
+    Shows the list of commits, one per line: a short ID and the message.
+
+SAVING
+
+git add app.py
+    Puts one file in the staging area.
+
+git add .
+    Puts ALL changed and new files in the staging area.
+    ("." means "this folder and everything inside it".)
+
+git commit -m "Add Streamlit web front end"
+    Saves everything in the staging area as one snapshot.
+    -m = the message. Write what changed and why, in a few words.
+
+BRANCHES
+
+git branch
+    Lists the branches. The current one has a "*" next to it.
+
+git checkout -b new-feature
+    Creates a new branch called "new-feature" and switches to it.
+    (Newer form: git switch -c new-feature)
+
+git checkout main
+    Switches back to the main branch.
+
+git merge new-feature
+    Brings the commits from "new-feature" into the current branch.
+
+WORKING WITH GITHUB
+
+git remote add origin https://github.com/USER/REPO.git
+    Connects your local repo to a GitHub repo and names that
+    connection "origin".
+
+git remote -v
+    Shows which GitHub repo(s) this folder is connected to.
+
+git push -u origin main
+    Uploads the "main" branch to GitHub for the first time.
+    -u remembers the connection, so next time a plain "git push" is
+    enough.
+
+git push
+    Uploads new commits to GitHub.
+
+git fetch
+    Downloads new information from GitHub but does NOT change your
+    files. Safe for just "having a look".
+
+git pull
+    Downloads new commits from GitHub AND applies them to your files
+    (fetch + merge in one step).
+
+UNDOING (careful)
+
+git restore app.py
+    Throws away your unsaved changes to app.py and goes back to the last
+    commit. The changes are lost.
+
+git restore --staged app.py
+    Takes app.py out of the staging area, but keeps your changes.
+
+--------------------------------------------------------------------------------
+GitHub CLI (gh): a GitHub helper for the terminal
+--------------------------------------------------------------------------------
+gh auth login        Log in to GitHub from the terminal (once).
+gh auth status       Shows which GitHub account you are logged in as.
+gh repo list         Lists your repos on GitHub.
+gh repo create       Creates a new repo on GitHub.
+gh pr create         Opens a "pull request": a request to merge one
+                     branch into another, so the changes can be
+                     reviewed first.
+
+--------------------------------------------------------------------------------
+The .gitignore file
+--------------------------------------------------------------------------------
+A list of files and folders Git should NOT track or upload. Ours has:
+
+    .venv/              the virtual environment (large, one computer only)
+    __pycache__/        files Python creates automatically while running
+    *.pyc               the same kind of auto-created files
+    .ipynb_checkpoints/ auto-saves from Jupyter notebooks
+    .pytest_cache/      leftovers from running the tests
+
+The trained model and the reports ARE uploaded, so visitors can see the
+results and use the web page without training first.
+
+--------------------------------------------------------------------------------
+How THIS project got to GitHub (what we actually did)
+--------------------------------------------------------------------------------
+On your computer, the project sits inside a bigger folder, "projects_ml",
+which is one Git repo. On GitHub we wanted ONLY the
+breast_cancer_classification folder, in its own repo. So:
+
+1. The GitHub repo "breast_cancer_classification" was created on the
+   website. GitHub added a one-line README.md.
+
+2. git subtree split --prefix=breast_cancer_classification -b bcc-standalone
+     Made a new branch that contains ONLY this folder (and its history),
+     with the files moved to the top level.
+
+3. git clone ... then git remote set-url origin <GitHub repo URL>
+     Made a separate working copy of that branch and pointed it at the
+     new GitHub repo.
+
+4. git fetch origin
+   git merge origin/main --allow-unrelated-histories
+     Brought in GitHub's README commit. The two histories had no common
+     start, so "--allow-unrelated-histories" was needed.
+
+5. Merge conflict in README.md
+     Both sides had a README.md. We kept our detailed one with
+     "git checkout --ours README.md", added a .gitignore, and committed.
+
+6. git push -u origin main
+     Uploaded everything to GitHub.
+
+7. Later changes (web page, tests, this file and so on) were copied in,
+   committed, and sent up again with "git push".
+
+================================================================================
+                                  END OF FILE
+================================================================================

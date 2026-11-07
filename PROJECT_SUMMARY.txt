@@ -1,0 +1,81 @@
+BREAST CANCER CLASSIFICATION - SHORT SUMMARY
+============================================
+(Full details: PROJECT_EXPLANATION.txt)
+
+WHAT IT DOES
+------------
+Takes 30 measurements of cells from a breast lump and predicts whether the
+tumor is MALIGNANT (cancer) or BENIGN (not cancer).
+Data: 569 patients, built into scikit-learn. Best result: 98% correct.
+For learning only, not a medical tool.
+
+TOOLS USED, AND WHY
+-------------------
+Python        - the main language for machine learning
+scikit-learn  - ready-made ML models; the best fit for small tables of data
+pandas        - handles the data as a table with column names
+NumPy         - fast math; pandas and scikit-learn need it
+Matplotlib    - draws the charts
+joblib        - saves the trained model to a file, so we train only once
+Streamlit     - builds the web page in pure Python (no HTML or JavaScript)
+pytest        - runs automatic checks to catch anything that breaks
+
+FILES
+-----
+src/data.py       Loads the data, splits it: 80% to train, 20% to test
+src/models.py     5 models: Logistic Regression, KNN, SVM, Random Forest,
+                  Gradient Boosting, plus the settings to try when tuning
+src/evaluate.py   Scores (accuracy, F1, ROC AUC), charts, feature importance
+train.py          Main script: compare models -> tune the best one ->
+                  test it -> save the model and reports
+predict.py        Loads the saved model and predicts 10 test patients
+app.py            Web page: enter 30 values, click Predict, see the result
+tests/            11 automatic checks for data, models, model file, web page
+models/           The saved trained model (best_model.joblib)
+reports/          Scores (CSV) and charts (PNG)
+requirements.txt  List of libraries to install
+
+STEPS IN train.py
+-----------------
+1. Load the data and keep 20% hidden for the final test
+2. Train 5 models and compare them with 5-fold cross-validation
+3. Pick the best one (Logistic Regression)
+4. Tune its settings with GridSearchCV
+5. Test it on the hidden 20%: 112 of 114 correct
+6. Save the model, scores and charts
+
+KEY IDEAS
+---------
+Scaling           Puts all numbers on a similar range
+Pipeline          Scaling + model in one step; stops test data leaking in
+Cross-validation  Train and check 5 times on different parts, then average
+ROC AUC           Score from 0.5 (guessing) to 1.0 (perfect)
+
+HOW TO RUN
+----------
+python3 -m venv .venv             create the virtual environment (once)
+source .venv/bin/activate         turn it on (every new terminal)
+pip install -r requirements.txt   install the libraries (once)
+cd breast_cancer_classification
+python train.py                   train and save
+python predict.py                 quick predictions in the terminal
+streamlit run app.py              web page at http://localhost:8501
+pytest                            run the checks
+
+VIRTUAL ENVIRONMENT
+-------------------
+A private folder (.venv) with its own Python and libraries for this project.
+It stops projects clashing and keeps the system Python clean.
+Turn it off with: deactivate
+
+GIT COMMANDS
+------------
+git status                  what changed
+git add .                   choose all changes to save
+git commit -m "message"     save a snapshot
+git push                    upload to GitHub
+git pull                    download new changes from GitHub
+git log --oneline           list of past snapshots
+git clone <url>             download a repo
+
+GitHub: https://github.com/abhishek-reddy-yes/breast_cancer_classification

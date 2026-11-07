@@ -24,6 +24,7 @@ bundled with scikit-learn — no download needed). Includes a web front end.
 
 ```
 breast_cancer_classification/
+├── PROJECT_EXPLANATION.txt  # detailed step-by-step explanation of every file
 ├── app.py              # Streamlit web front end
 ├── train.py            # train, compare, tune, evaluate, save
 ├── predict.py          # command-line predictions with the saved model
