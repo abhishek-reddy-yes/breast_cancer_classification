@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+models/*.joblib
+reports/*
+!reports/.gitkeep
+.ipynb_checkpoints/
